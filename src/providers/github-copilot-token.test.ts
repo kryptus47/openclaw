@@ -79,9 +79,12 @@ describe("github-copilot token", () => {
     expect(saveJsonFile).toHaveBeenCalledTimes(1);
   });
 
-  it("derives baseUrl from response endpoints.proxy for GHE Cloud", async () => {
+  it("derives baseUrl from host default for GHE Cloud (ignores shared proxy domain)", async () => {
     loadJsonFile.mockReturnValue(undefined);
 
+    // Real GHE Cloud token responses return a shared proxy domain
+    // (copilot-proxy.githubusercontent.com), NOT an org-specific one.
+    // The API base URL must come from the host-derived default instead.
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -89,7 +92,7 @@ describe("github-copilot token", () => {
         token: "opaque-enterprise-token",
         expires_at: Math.floor(Date.now() / 1000) + 3600,
         endpoints: {
-          proxy: "https://copilot-proxy.myorg.ghe.com",
+          proxy: "https://copilot-proxy.githubusercontent.com",
         },
       }),
     });
@@ -103,7 +106,7 @@ describe("github-copilot token", () => {
     });
 
     expect(res.token).toBe("opaque-enterprise-token");
-    // copilot-proxy.* → copilot-api.* transformation
+    // Should use host-derived default, NOT the shared proxy domain
     expect(res.baseUrl).toBe("https://copilot-api.myorg.ghe.com");
   });
 

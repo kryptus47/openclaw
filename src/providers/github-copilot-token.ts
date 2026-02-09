@@ -154,12 +154,15 @@ export async function resolveCopilotApiToken(params: {
   };
   saveJsonFile(cachePath, payload);
 
-  // Prefer: 1) proxy-ep from the token string (github.com tokens)
-  //         2) endpoints.proxy from the response JSON (GHE Cloud tokens)
-  //         3) host-derived default
+  // Prefer: 1) proxy-ep from the token string (github.com tokens embed this)
+  //         2) host-derived default (works for both github.com and GHE Cloud)
+  //
+  // Note: we intentionally skip the `endpoints.proxy` JSON field for API base
+  // URL derivation. GHE Cloud returns a shared proxy domain (e.g.
+  // copilot-proxy.githubusercontent.com) that cannot be hostname-swapped to get
+  // the org-specific API base URL (copilot-api.{host}).
   const baseUrl =
     deriveCopilotApiBaseUrlFromToken(payload.token) ??
-    deriveCopilotApiBaseUrlFromProxyEndpoint(json.proxyEndpoint) ??
     endpoints.defaultCopilotApiBaseUrl;
 
   return {
@@ -172,10 +175,14 @@ export async function resolveCopilotApiToken(params: {
 
 /**
  * Derive a Copilot API base URL from the `endpoints.proxy` field in the
- * token response (GHE Cloud with data residency).
+ * token response by transforming `copilot-proxy.X` → `copilot-api.X`.
  *
- * Transforms `copilot-proxy.X` → `copilot-api.X`, mirroring how VS Code
- * derives the model listing / session endpoint.
+ * WARNING: This does NOT work for GHE Cloud with data residency because
+ * the token response returns a shared proxy (`copilot-proxy.githubusercontent.com`)
+ * rather than an org-specific one. Use `endpoints.defaultCopilotApiBaseUrl`
+ * (from `resolveGitHubCopilotEndpoints`) for GHE Cloud instead.
+ *
+ * Exported for edge-case callers; not used in the main resolution chain.
  */
 export function deriveCopilotApiBaseUrlFromProxyEndpoint(
   proxyEndpoint: string | null | undefined,
