@@ -2,6 +2,9 @@ import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { describe, expect, it } from "vitest";
 import { splitParallelToolCalls } from "./session-transcript-repair.js";
 
+type Rec = Record<string, unknown>;
+type RecArray = Rec[];
+
 describe("splitParallelToolCalls", () => {
   it("returns same array when no assistant messages have multiple tool calls", () => {
     const input = [
@@ -58,19 +61,19 @@ describe("splitParallelToolCalls", () => {
     const a1 = out[1] as Extract<AgentMessage, { role: "assistant" }>;
     expect(a1.role).toBe("assistant");
     expect(a1.content).toHaveLength(1);
-    expect((a1.content as any[])[0].id).toBe("call_1");
+    expect((a1.content as RecArray)[0].id).toBe("call_1");
 
-    expect((out[2] as any).role).toBe("toolResult");
-    expect((out[2] as any).toolCallId).toBe("call_1");
+    expect((out[2] as Rec).role).toBe("toolResult");
+    expect((out[2] as Rec).toolCallId).toBe("call_1");
 
     // Second pair
     const a2 = out[3] as Extract<AgentMessage, { role: "assistant" }>;
     expect(a2.role).toBe("assistant");
     expect(a2.content).toHaveLength(1);
-    expect((a2.content as any[])[0].id).toBe("call_2");
+    expect((a2.content as RecArray)[0].id).toBe("call_2");
 
-    expect((out[4] as any).role).toBe("toolResult");
-    expect((out[4] as any).toolCallId).toBe("call_2");
+    expect((out[4] as Rec).role).toBe("toolResult");
+    expect((out[4] as Rec).toolCallId).toBe("call_2");
   });
 
   it("preserves non-tool-call content blocks on the first split assistant message", () => {
@@ -104,13 +107,13 @@ describe("splitParallelToolCalls", () => {
 
     const first = out[0] as Extract<AgentMessage, { role: "assistant" }>;
     expect(first.content).toHaveLength(2); // text block + 1 tool call
-    expect((first.content as any[])[0].type).toBe("text");
-    expect((first.content as any[])[0].text).toBe("Let me do both.");
-    expect((first.content as any[])[1].id).toBe("c1");
+    expect((first.content as RecArray)[0].type).toBe("text");
+    expect((first.content as RecArray)[0].text).toBe("Let me do both.");
+    expect((first.content as RecArray)[1].id).toBe("c1");
 
     const second = out[2] as Extract<AgentMessage, { role: "assistant" }>;
     expect(second.content).toHaveLength(1); // just the tool call
-    expect((second.content as any[])[0].id).toBe("c2");
+    expect((second.content as RecArray)[0].id).toBe("c2");
   });
 
   it("splits 3 parallel tool calls into 3 sequential pairs", () => {
@@ -150,13 +153,13 @@ describe("splitParallelToolCalls", () => {
     expect(out).toHaveLength(6); // 3 * (assistant + toolResult)
 
     for (let k = 0; k < 3; k++) {
-      expect((out[k * 2] as any).role).toBe("assistant");
-      expect((out[k * 2 + 1] as any).role).toBe("toolResult");
+      expect((out[k * 2] as Rec).role).toBe("assistant");
+      expect((out[k * 2 + 1] as Rec).role).toBe("toolResult");
     }
 
-    expect((out[1] as any).toolCallId).toBe("a");
-    expect((out[3] as any).toolCallId).toBe("b");
-    expect((out[5] as any).toolCallId).toBe("c");
+    expect((out[1] as Rec).toolCallId).toBe("a");
+    expect((out[3] as Rec).toolCallId).toBe("b");
+    expect((out[5] as Rec).toolCallId).toBe("c");
   });
 
   it("handles mixed: some single, some parallel tool calls", () => {
@@ -207,12 +210,12 @@ describe("splitParallelToolCalls", () => {
     expect(out[2]).toBe(input[2]);
 
     // Split pair
-    expect((out[3] as any).role).toBe("assistant");
-    expect(((out[3] as any).content as any[]).length).toBe(1);
-    expect(((out[3] as any).content as any[])[0].id).toBe("p1");
-    expect((out[4] as any).toolCallId).toBe("p1");
-    expect(((out[5] as any).content as any[])[0].id).toBe("p2");
-    expect((out[6] as any).toolCallId).toBe("p2");
+    expect((out[3] as Rec).role).toBe("assistant");
+    expect(((out[3] as Rec).content as RecArray).length).toBe(1);
+    expect(((out[3] as Rec).content as RecArray)[0].id).toBe("p1");
+    expect((out[4] as Rec).toolCallId).toBe("p1");
+    expect(((out[5] as Rec).content as RecArray)[0].id).toBe("p2");
+    expect((out[6] as Rec).toolCallId).toBe("p2");
 
     // Final assistant
     expect(out[7]).toBe(input[6]);
